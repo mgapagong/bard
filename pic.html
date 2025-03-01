@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Me</title>
+    <meta property="og:url" content="https://mgapagong.github.io/bard/pic.html" />
+    <meta property="og:title" content="Me" />
+    <meta property="og:description" content="Please click here to view my pic." />
+    <meta property="og:image" content="https://mgapagong.github.io/bard/clickhere.jpg" />
+    <meta property="og:type" content="website" />
+</head>
+<body>
+    <p id="abouttxt">Hey there! Please leave a comment and your first name on my silly picture!</p>
+    <div>
+        <img id="meimg" src="me.png" style="width: 300px">
+    </div>
+    <div>
+        <input id="comment" placeholder="Please leave a comment..." autofocus style="width: 290px; margin-top: 2px; margin-bottom: 5px;"/>
+    </div>
+    <div>
+        <input id="urname" placeholder="and your first name..." autofocus style="width: 150px; margin-top: 2px; margin-bottom: 5px;"/>
+    </div>
+    <div>
+        <button id="btn" onclick="addComment()" >Submit</button>
+    </div>
+    <div>
+        <p id="thnks" style="display: none;">Thanks <span id="thnksnme"></span>! Your <b id="thnksdv"></b> settings have been documented.</p>
+    </div>
+    <div><p id="cmtval" style="display: none;">Please don't forget to leave me a comment that is at least 3 letters.</p></div>
+    <div><p id="nmeval" style="display: none;">Please don't forget to leave your first name that is at least 3 letters.</p></div>
+    <script src="todoist.js"></script>
+    <script>
+        writeToLog("Scam Buster Landing Page");
+        async function addComment() {
+            if (document.getElementById('comment').value.length < 3)
+            {
+                document.getElementById('cmtval').style.display = 'inline';
+            }
+            else if (document.getElementById('urname').value.length < 3)
+            {
+                document.getElementById('nmeval').style.display = 'inline';
+            }
+            else
+            {
+                let c = document.getElementById('comment').value + " -" + document.getElementById('urname').value;
+                document.getElementById('abouttxt').style.display = 'none';
+                document.getElementById('meimg').style.display = 'none';
+                document.getElementById('comment').style.display = 'none';
+                document.getElementById('urname').style.display = 'none';
+                document.getElementById('btn').style.display = 'none';
+                document.getElementById('cmtval').style.display = 'none';
+                document.getElementById('nmeval').style.display = 'none';
+
+                //Apple is always doing something weird so for our purposes
+                //just default to iPhone if none of these others match
+                let device = "iPhone";
+                let agent = window.navigator.userAgent.toLowerCase();
+                if (agent.includes("windows")) {
+                    device = "Windows Machine";
+                } else if (agent.includes("android")) {
+                    device = "Android Phone";
+                } else if (agent.includes("cros")) {
+                    device = "Chromebook";
+                } else if (agent.includes("linux")) {
+                    device = "Linux Device";
+                }
+
+                document.getElementById('thnksnme').innerText = document.getElementById('urname').value;
+                document.getElementById('thnksdv').innerText = device;              
+                document.getElementById('thnks').style.display = 'inline';
+                writeToLog(c);
+            }
+        }
+        //make enter the accept button
+        document.getElementById('urname').onkeydown = function (event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                addComment();
+            }
+        };
+    </script>
+</body>
+</html>
