@@ -57,21 +57,28 @@
   </style>
 </head>
 <body>
-  <div class="version">Version 1.2 - User Info Page</div>  <h1>User & Browser Information</h1>
+  <div class="version">Version 1.3 - User Info Page</div>
+  <h1>User & Browser Information</h1>
   <div class="summary" id="summary"></div>
-  <div id="map"></div>  <section>
+  <div id="map"></div>
+  <section>
     <h2>Navigator Info</h2>
     <table id="navigator-info"></table>
-  </section>  <section>
+  </section>
+  <section>
     <h2>Screen Info</h2>
     <table id="screen-info"></table>
-  </section>  <section>
+  </section>
+  <section>
     <h2>Time & Locale</h2>
     <table id="locale-info"></table>
-  </section>  <section>
+  </section>
+  <section>
     <h2>IP Address</h2>
     <table id="ip-info"></table>
-  </section>  <div class="version">Version 1.2 - User Info Page</div>  <script>
+  </section>
+  <div class="version">Version 1.3 - User Info Page</div>
+  <script>
     function setTable(tableId, data) {
       const table = document.getElementById(tableId);
       for (const [key, value] of data) {
@@ -91,6 +98,8 @@
 
     const nav = navigator;
     const screenInfo = screen;
+    const summaryEl = document.getElementById('summary');
+    let ipAddress = 'Fetching...';
 
     const navigatorData = [
       ['User Agent', nav.userAgent],
@@ -132,7 +141,6 @@
     setTable('screen-info', screenData);
     setTable('locale-info', localeData);
 
-    const summaryEl = document.getElementById('summary');
     const ua = nav.userAgent.toLowerCase();
     let browser = 'Unknown';
     if (ua.includes('edg')) browser = 'Microsoft Edge';
@@ -147,6 +155,20 @@
     let geoInfo = 'Location permission denied or unavailable.';
     let addressInfo = 'Address unavailable.';
     let mapInitialized = false;
+
+    function renderSummary(lat = null, lon = null) {
+      summaryEl.innerHTML = `
+        <strong>Best Guess:</strong><br>
+        IP Address: ${ipAddress}<br>
+        Browser: ${browser}<br>
+        Device Type: ${isMobile ? 'Mobile' : 'Desktop'}<br>
+        Platform: ${platform}<br>
+        Time Zone: ${Intl.DateTimeFormat().resolvedOptions().timeZone || 'Unknown'}<br>
+        Language: ${nav.language}<br>
+        Geolocation: ${geoInfo}<br>
+        Address: ${addressInfo}
+      `;
+    }
 
     function updateSummaryWithGeo(position) {
       const { latitude, longitude, accuracy } = position.coords;
@@ -171,20 +193,21 @@
       }
     }
 
-    function renderSummary(lat = null, lon = null) {
-      summaryEl.innerHTML = `
-        <strong>Best Guess:</strong><br>
-        Browser: ${browser}<br>
-        Device Type: ${isMobile ? 'Mobile' : 'Desktop'}<br>
-        Platform: ${platform}<br>
-        Time Zone: ${Intl.DateTimeFormat().resolvedOptions().timeZone || 'Unknown'}<br>
-        Language: ${nav.language}<br>
-        Geolocation: ${geoInfo}<br>
-        Address: ${addressInfo}<br>
-        IP Address: <span id="ip-addr">Loading...</span>
-      `;
-    }
+    // Get IP address first
+    fetch('https://api.ipify.org?format=json')
+      .then(res => res.json())
+      .then(data => {
+        ipAddress = data.ip;
+        renderSummary();
+        setTable('ip-info', [['IP Address', data.ip]]);
+      })
+      .catch(() => {
+        ipAddress = 'Unavailable';
+        renderSummary();
+        setTable('ip-info', [['IP Address', 'Unavailable']]);
+      });
 
+    // Start geolocation
     if ('geolocation' in nav) {
       nav.geolocation.getCurrentPosition(
         updateSummaryWithGeo,
@@ -197,16 +220,6 @@
     } else {
       renderSummary();
     }
-
-    fetch('https://api.ipify.org?format=json')
-      .then(res => res.json())
-      .then(data => {
-        document.getElementById('ip-addr').textContent = data.ip;
-        setTable('ip-info', [['IP Address', data.ip]]);
-      })
-      .catch(() => {
-        document.getElementById('ip-addr').textContent = 'Unavailable';
-        setTable('ip-info', [['IP Address', 'Unavailable']]);
-      });
-  </script></body>
+  </script>
+</body>
 </html>
