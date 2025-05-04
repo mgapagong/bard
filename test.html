@@ -58,7 +58,7 @@
   </style>
 </head>
 <body>
-  <div class="version">Version 1.4 - User Info Page</div>
+  <div class="version">Version 1.5 - User Info Page</div>
   <h1>User & Browser Information</h1>
   <div class="summary" id="summary"></div>
 
@@ -81,9 +81,10 @@
   <section>
     <h2>Geolocation Info</h2>
     <div id="geo-map" class="map"></div>
+    <p id="geo-info-text" style="margin-top: 1rem;"></p>
   </section>
 
-  <div class="version">Version 1.4 - User Info Page</div>
+  <div class="version">Version 1.5 - User Info Page</div>
 
   <script>
     function setTable(tableId, data) {
@@ -163,9 +164,7 @@
         Country: ${ipData.country || 'Unknown'}<br>
         ISP: ${ipData.connection?.isp || 'Unknown'}<br>
         ASN: ${ipData.connection?.asn || 'Unknown'}<br>
-        Proxy: ${ipData.proxy?.proxy ? 'Yes' : 'No'}<br>
-        Geolocation: ${geoInfo}<br>
-        Address: ${addressInfo}
+        Proxy: ${ipData.proxy?.proxy ? 'Yes' : 'No'}
       `;
     }
 
@@ -177,10 +176,14 @@
         .then(res => res.json())
         .then(data => {
           addressInfo = data.display_name || 'Address lookup failed.';
+          document.getElementById('geo-info-text').innerHTML =
+            `Geolocation: ${geoInfo}<br>Address: ${addressInfo}`;
           renderSummary(latitude, longitude);
         })
         .catch(() => {
           addressInfo = 'Address lookup failed.';
+          document.getElementById('geo-info-text').innerHTML =
+            `Geolocation: ${geoInfo}<br>Address: ${addressInfo}`;
           renderSummary(latitude, longitude);
         });
 
