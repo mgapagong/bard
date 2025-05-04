@@ -161,11 +161,7 @@
       ['USB API', 'usb' in nav],
       ['Share API', 'share' in nav],
       ['Battery API', 'getBattery' in nav],
-      ['Permissions API', 'permissions' in nav],
-      ['Speech Synthesis', 'speechSynthesis' in win],
-      ['Speech Recognition', 'SpeechRecognition' in win || 'webkitSpeechRecognition' in win],
-      ['Fullscreen API', 'fullscreenEnabled' in doc || 'webkitFullscreenEnabled' in doc],
-      ['Touch Support', 'ontouchstart' in win || nav.maxTouchPoints > 0]
+      ['Permissions API', 'permissions' in nav]
     ];
 
     const legacy = [
@@ -183,30 +179,22 @@
     setTable('features-info', features);
     setTable('legacy-info', legacy);
 
+    // Summary based on best guess
     const summaryEl = document.getElementById('summary');
     const ua = nav.userAgent.toLowerCase();
     let browser = 'Unknown';
     if (ua.includes('edg')) browser = 'Microsoft Edge';
-    else if (ua.includes('chrome') && !ua.includes('edg')) browser = 'Google Chrome';
+    else if (ua.includes('chrome')) browser = 'Google Chrome';
+    else if (ua.includes('safari')) browser = 'Safari';
     else if (ua.includes('firefox')) browser = 'Mozilla Firefox';
-    else if (ua.includes('safari') && !ua.includes('chrome')) browser = 'Safari';
     else if (ua.includes('trident') || ua.includes('msie')) browser = 'Internet Explorer';
 
-    let os = 'Unknown';
-    if (ua.includes('windows nt 10')) os = 'Windows 10/11';
-    else if (ua.includes('windows nt 6.1')) os = 'Windows 7';
-    else if (ua.includes('mac os x')) os = 'macOS';
-    else if (ua.includes('android')) os = 'Android';
-    else if (ua.includes('iphone') || ua.includes('ipad') || ua.includes('ipod')) os = 'iOS';
-    else if (ua.includes('linux')) os = 'Linux';
-
     const isMobile = /android|iphone|ipad|ipod|windows phone/.test(ua);
-    const platform = nav.platform || 'Unknown';
+    const platform = nav.platform;
 
     summaryEl.innerHTML = `
       <strong>Best Guess:</strong><br>
       Browser: ${browser}<br>
-      OS: ${os}<br>
       Device Type: ${isMobile ? 'Mobile' : 'Desktop'}<br>
       Platform: ${platform}<br>
       Time Zone: ${Intl.DateTimeFormat().resolvedOptions().timeZone || 'Unknown'}<br>
