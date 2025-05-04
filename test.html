@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <title>User & Browser Info</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
   <style>
     body {
       font-family: sans-serif;
@@ -48,13 +50,19 @@
       color: #666;
       margin: 1rem 0;
     }
+    #map {
+      height: 300px;
+      margin-top: 1rem;
+      border-radius: 8px;
+    }
   </style>
 </head>
 <body>
-  <div class="version">Version 1.0 - User Info Page</div>
+  <div class="version">Version 1.1 - User Info Page</div>
 
   <h1>User & Browser Information</h1>
   <div class="summary" id="summary"></div>
+  <div id="map"></div>
 
   <section>
     <h2>Navigator Info</h2>
@@ -86,7 +94,7 @@
     <table id="legacy-info"></table>
   </section>
 
-  <div class="version">Version 1.0 - User Info Page</div>
+  <div class="version">Version 1.1 - User Info Page</div>
 
   <script>
     function setTable(tableId, data) {
@@ -202,14 +210,33 @@
     const platform = nav.platform;
 
     let geoInfo = 'Location permission denied or unavailable.';
+    let addressInfo = 'Address unavailable.';
+    let mapInitialized = false;
 
     function updateSummaryWithGeo(position) {
       const { latitude, longitude, accuracy } = position.coords;
       geoInfo = `Latitude: ${latitude.toFixed(5)}, Longitude: ${longitude.toFixed(5)} (±${accuracy}m)`;
-      renderSummary();
+
+      fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`)
+        .then(res => res.json())
+        .then(data => {
+          addressInfo = data.display_name || 'Address lookup failed.';
+          renderSummary(latitude, longitude);
+        })
+        .catch(() => {
+          addressInfo = 'Address lookup failed.';
+          renderSummary(latitude, longitude);
+        });
+
+      if (!mapInitialized) {
+        const map = L.map('map').setView([latitude, longitude], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        L.marker([latitude, longitude]).addTo(map).bindPopup("You are here").openPopup();
+        mapInitialized = true;
+      }
     }
 
-    function renderSummary() {
+    function renderSummary(lat = null, lon = null) {
       summaryEl.innerHTML = `
         <strong>Best Guess:</strong><br>
         Browser: ${browser}<br>
@@ -218,6 +245,7 @@
         Time Zone: ${Intl.DateTimeFormat().resolvedOptions().timeZone || 'Unknown'}<br>
         Language: ${nav.language}<br>
         Geolocation: ${geoInfo}<br>
+        Address: ${addressInfo}
       `;
     }
 
