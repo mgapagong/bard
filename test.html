@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en">
+<!DOCTYPE html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <title>User & Browser Info</title>
@@ -57,7 +58,7 @@
   </style>
 </head>
 <body>
-  <div class="version">Version 1.3 - User Info Page</div>
+  <div class="version">Version 1.4 - User Info Page</div>
   <h1>User & Browser Information</h1>
   <div class="summary" id="summary"></div>
   <div id="map"></div>
@@ -74,10 +75,10 @@
     <table id="locale-info"></table>
   </section>
   <section>
-    <h2>IP Address</h2>
+    <h2>IP & Network Info</h2>
     <table id="ip-info"></table>
   </section>
-  <div class="version">Version 1.3 - User Info Page</div>
+  <div class="version">Version 1.4 - User Info Page</div>
   <script>
     function setTable(tableId, data) {
       const table = document.getElementById(tableId);
@@ -100,6 +101,7 @@
     const screenInfo = screen;
     const summaryEl = document.getElementById('summary');
     let ipAddress = 'Fetching...';
+    let ipData = {};
 
     const navigatorData = [
       ['User Agent', nav.userAgent],
@@ -165,6 +167,10 @@
         Platform: ${platform}<br>
         Time Zone: ${Intl.DateTimeFormat().resolvedOptions().timeZone || 'Unknown'}<br>
         Language: ${nav.language}<br>
+        Country: ${ipData.country || 'Unknown'}<br>
+        ISP: ${ipData.connection?.isp || 'Unknown'}<br>
+        ASN: ${ipData.connection?.asn || 'Unknown'}<br>
+        Proxy: ${ipData.proxy?.proxy ? 'Yes' : 'No'}<br>
         Geolocation: ${geoInfo}<br>
         Address: ${addressInfo}
       `;
@@ -193,13 +199,32 @@
       }
     }
 
-    // Get IP address first
-    fetch('https://api.ipify.org?format=json')
+    fetch('https://ipwho.is/')
       .then(res => res.json())
       .then(data => {
-        ipAddress = data.ip;
+        ipData = data;
+        ipAddress = data.ip || 'Unavailable';
         renderSummary();
-        setTable('ip-info', [['IP Address', data.ip]]);
+
+        const rows = [
+          ['IP Address', data.ip],
+          ['Type', data.type],
+          ['Country', `${data.country} (${data.country_code})`],
+          ['Region', data.region],
+          ['City', data.city],
+          ['Latitude', data.latitude],
+          ['Longitude', data.longitude],
+          ['Postal Code', data.postal],
+          ['Timezone', data.timezone?.id],
+          ['UTC Offset', data.timezone?.utc],
+          ['ISP', data.connection?.isp],
+          ['ASN', data.connection?.asn],
+          ['Organization', data.connection?.org],
+          ['Is Proxy', data.proxy?.proxy ? 'Yes' : 'No'],
+          ['Is VPN', data.proxy?.vpn ? 'Yes' : 'No'],
+          ['Is Tor', data.proxy?.tor ? 'Yes' : 'No']
+        ];
+        setTable('ip-info', rows);
       })
       .catch(() => {
         ipAddress = 'Unavailable';
@@ -207,7 +232,6 @@
         setTable('ip-info', [['IP Address', 'Unavailable']]);
       });
 
-    // Start geolocation
     if ('geolocation' in nav) {
       nav.geolocation.getCurrentPosition(
         updateSummaryWithGeo,
