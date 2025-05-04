@@ -1,5 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html><html lang="en">
 <head>
   <meta charset="UTF-8">
   <title>User & Browser Info</title>
@@ -58,45 +57,21 @@
   </style>
 </head>
 <body>
-  <div class="version">Version 1.1 - User Info Page</div>
-
-  <h1>User & Browser Information</h1>
+  <div class="version">Version 1.2 - User Info Page</div>  <h1>User & Browser Information</h1>
   <div class="summary" id="summary"></div>
-  <div id="map"></div>
-
-  <section>
+  <div id="map"></div>  <section>
     <h2>Navigator Info</h2>
     <table id="navigator-info"></table>
-  </section>
-
-  <section>
+  </section>  <section>
     <h2>Screen Info</h2>
     <table id="screen-info"></table>
-  </section>
-
-  <section>
-    <h2>Window Info</h2>
-    <table id="window-info"></table>
-  </section>
-
-  <section>
+  </section>  <section>
     <h2>Time & Locale</h2>
     <table id="locale-info"></table>
-  </section>
-
-  <section>
-    <h2>Features Detection</h2>
-    <table id="features-info"></table>
-  </section>
-
-  <section>
-    <h2>Deprecated / Legacy Info</h2>
-    <table id="legacy-info"></table>
-  </section>
-
-  <div class="version">Version 1.1 - User Info Page</div>
-
-  <script>
+  </section>  <section>
+    <h2>IP Address</h2>
+    <table id="ip-info"></table>
+  </section>  <div class="version">Version 1.2 - User Info Page</div>  <script>
     function setTable(tableId, data) {
       const table = document.getElementById(tableId);
       for (const [key, value] of data) {
@@ -116,7 +91,6 @@
 
     const nav = navigator;
     const screenInfo = screen;
-    const win = window;
 
     const navigatorData = [
       ['User Agent', nav.userAgent],
@@ -147,14 +121,6 @@
       ['Orientation', tryGet(() => screen.orientation.type || screen.msOrientation || screen.mozOrientation, 'N/A')]
     ];
 
-    const windowData = [
-      ['Inner Width', win.innerWidth],
-      ['Inner Height', win.innerHeight],
-      ['Outer Width', win.outerWidth],
-      ['Outer Height', win.outerHeight],
-      ['Device Pixel Ratio', win.devicePixelRatio]
-    ];
-
     const localeData = [
       ['Timezone Offset (min)', new Date().getTimezoneOffset()],
       ['Time Zone', Intl.DateTimeFormat().resolvedOptions().timeZone || 'Unknown'],
@@ -162,40 +128,9 @@
       ['Current Time', new Date().toString()]
     ];
 
-    const features = [
-      ['Local Storage', 'localStorage' in win],
-      ['Session Storage', 'sessionStorage' in win],
-      ['IndexedDB', 'indexedDB' in win],
-      ['Service Workers', 'serviceWorker' in nav],
-      ['WebGL', (() => {
-        try {
-          const canvas = document.createElement('canvas');
-          return !!canvas.getContext('webgl');
-        } catch { return false; }
-      })()],
-      ['Geolocation', 'geolocation' in nav],
-      ['Clipboard API', 'clipboard' in nav],
-      ['Bluetooth API', 'bluetooth' in nav],
-      ['USB API', 'usb' in nav],
-      ['Share API', 'share' in nav],
-      ['Battery API', 'getBattery' in nav],
-      ['Permissions API', 'permissions' in nav]
-    ];
-
-    const legacy = [
-      ['appCodeName (deprecated)', nav.appCodeName],
-      ['taintEnabled (non-standard)', tryGet(() => nav.taintEnabled ? nav.taintEnabled() : 'Unavailable')],
-      ['CPU Class (IE only)', nav.cpuClass || 'N/A'],
-      ['System Language (IE only)', nav.systemLanguage || 'N/A'],
-      ['Browser Language (IE only)', nav.browserLanguage || 'N/A']
-    ];
-
     setTable('navigator-info', navigatorData);
     setTable('screen-info', screenData);
-    setTable('window-info', windowData);
     setTable('locale-info', localeData);
-    setTable('features-info', features);
-    setTable('legacy-info', legacy);
 
     const summaryEl = document.getElementById('summary');
     const ua = nav.userAgent.toLowerCase();
@@ -245,7 +180,8 @@
         Time Zone: ${Intl.DateTimeFormat().resolvedOptions().timeZone || 'Unknown'}<br>
         Language: ${nav.language}<br>
         Geolocation: ${geoInfo}<br>
-        Address: ${addressInfo}
+        Address: ${addressInfo}<br>
+        IP Address: <span id="ip-addr">Loading...</span>
       `;
     }
 
@@ -261,6 +197,16 @@
     } else {
       renderSummary();
     }
-  </script>
-</body>
+
+    fetch('https://api.ipify.org?format=json')
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById('ip-addr').textContent = data.ip;
+        setTable('ip-info', [['IP Address', data.ip]]);
+      })
+      .catch(() => {
+        document.getElementById('ip-addr').textContent = 'Unavailable';
+        setTable('ip-info', [['IP Address', 'Unavailable']]);
+      });
+  </script></body>
 </html>
