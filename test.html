@@ -42,9 +42,17 @@
       margin-bottom: 2rem;
       border-radius: 8px;
     }
+    .version {
+      text-align: center;
+      font-size: 0.9rem;
+      color: #666;
+      margin: 1rem 0;
+    }
   </style>
 </head>
 <body>
+  <div class="version">Version 1.0 - User Info Page</div>
+
   <h1>User & Browser Information</h1>
   <div class="summary" id="summary"></div>
 
@@ -77,6 +85,8 @@
     <h2>Deprecated / Legacy Info</h2>
     <table id="legacy-info"></table>
   </section>
+
+  <div class="version">Version 1.0 - User Info Page</div>
 
   <script>
     function setTable(tableId, data) {
@@ -179,7 +189,6 @@
     setTable('features-info', features);
     setTable('legacy-info', legacy);
 
-    // Summary based on best guess
     const summaryEl = document.getElementById('summary');
     const ua = nav.userAgent.toLowerCase();
     let browser = 'Unknown';
@@ -192,14 +201,38 @@
     const isMobile = /android|iphone|ipad|ipod|windows phone/.test(ua);
     const platform = nav.platform;
 
-    summaryEl.innerHTML = `
-      <strong>Best Guess:</strong><br>
-      Browser: ${browser}<br>
-      Device Type: ${isMobile ? 'Mobile' : 'Desktop'}<br>
-      Platform: ${platform}<br>
-      Time Zone: ${Intl.DateTimeFormat().resolvedOptions().timeZone || 'Unknown'}<br>
-      Language: ${nav.language}<br>
-    `;
+    let geoInfo = 'Location permission denied or unavailable.';
+
+    function updateSummaryWithGeo(position) {
+      const { latitude, longitude, accuracy } = position.coords;
+      geoInfo = `Latitude: ${latitude.toFixed(5)}, Longitude: ${longitude.toFixed(5)} (±${accuracy}m)`;
+      renderSummary();
+    }
+
+    function renderSummary() {
+      summaryEl.innerHTML = `
+        <strong>Best Guess:</strong><br>
+        Browser: ${browser}<br>
+        Device Type: ${isMobile ? 'Mobile' : 'Desktop'}<br>
+        Platform: ${platform}<br>
+        Time Zone: ${Intl.DateTimeFormat().resolvedOptions().timeZone || 'Unknown'}<br>
+        Language: ${nav.language}<br>
+        Geolocation: ${geoInfo}<br>
+      `;
+    }
+
+    if ('geolocation' in nav) {
+      nav.geolocation.getCurrentPosition(
+        updateSummaryWithGeo,
+        () => {
+          geoInfo = 'Location permission denied or unavailable.';
+          renderSummary();
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    } else {
+      renderSummary();
+    }
   </script>
 </body>
 </html>
