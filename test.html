@@ -50,7 +50,7 @@
       color: #666;
       margin: 1rem 0;
     }
-    #map {
+    .map {
       height: 300px;
       margin-top: 1rem;
       border-radius: 8px;
@@ -61,24 +61,30 @@
   <div class="version">Version 1.4 - User Info Page</div>
   <h1>User & Browser Information</h1>
   <div class="summary" id="summary"></div>
-  <div id="map"></div>
+
   <section>
     <h2>Navigator Info</h2>
     <table id="navigator-info"></table>
   </section>
-  <section>
-    <h2>Screen Info</h2>
-    <table id="screen-info"></table>
-  </section>
+
   <section>
     <h2>Time & Locale</h2>
     <table id="locale-info"></table>
   </section>
+
   <section>
     <h2>IP & Network Info</h2>
     <table id="ip-info"></table>
+    <div id="ip-map" class="map"></div>
   </section>
+
+  <section>
+    <h2>Geolocation Info</h2>
+    <div id="geo-map" class="map"></div>
+  </section>
+
   <div class="version">Version 1.4 - User Info Page</div>
+
   <script>
     function setTable(tableId, data) {
       const table = document.getElementById(tableId);
@@ -98,7 +104,6 @@
     }
 
     const nav = navigator;
-    const screenInfo = screen;
     const summaryEl = document.getElementById('summary');
     let ipAddress = 'Fetching...';
     let ipData = {};
@@ -122,16 +127,6 @@
       ['Do Not Track', nav.doNotTrack]
     ];
 
-    const screenData = [
-      ['Width', screenInfo.width],
-      ['Height', screenInfo.height],
-      ['Available Width', screenInfo.availWidth],
-      ['Available Height', screenInfo.availHeight],
-      ['Color Depth', screenInfo.colorDepth],
-      ['Pixel Depth', screenInfo.pixelDepth],
-      ['Orientation', tryGet(() => screen.orientation.type || screen.msOrientation || screen.mozOrientation, 'N/A')]
-    ];
-
     const localeData = [
       ['Timezone Offset (min)', new Date().getTimezoneOffset()],
       ['Time Zone', Intl.DateTimeFormat().resolvedOptions().timeZone || 'Unknown'],
@@ -140,7 +135,6 @@
     ];
 
     setTable('navigator-info', navigatorData);
-    setTable('screen-info', screenData);
     setTable('locale-info', localeData);
 
     const ua = nav.userAgent.toLowerCase();
@@ -156,7 +150,6 @@
 
     let geoInfo = 'Location permission denied or unavailable.';
     let addressInfo = 'Address unavailable.';
-    let mapInitialized = false;
 
     function renderSummary(lat = null, lon = null) {
       summaryEl.innerHTML = `
@@ -191,12 +184,9 @@
           renderSummary(latitude, longitude);
         });
 
-      if (!mapInitialized) {
-        const map = L.map('map').setView([latitude, longitude], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-        L.marker([latitude, longitude]).addTo(map).bindPopup("You are here").openPopup();
-        mapInitialized = true;
-      }
+      const map = L.map('geo-map').setView([latitude, longitude], 13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+      L.marker([latitude, longitude]).addTo(map).bindPopup("Your precise location").openPopup();
     }
 
     fetch('https://ipwho.is/')
@@ -225,6 +215,10 @@
           ['Is Tor', data.proxy?.tor ? 'Yes' : 'No']
         ];
         setTable('ip-info', rows);
+
+        const map = L.map('ip-map').setView([data.latitude, data.longitude], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        L.marker([data.latitude, data.longitude]).addTo(map).bindPopup("IP-based location").openPopup();
       })
       .catch(() => {
         ipAddress = 'Unavailable';
