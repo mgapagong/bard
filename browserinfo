@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>User & Browser Info</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 1rem;
+    }
+    h1, h2 {
+      margin-top: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+    section {
+      margin-bottom: 1.5rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 0.5rem;
+    }
+    th, td {
+      padding: 0.5rem;
+      border: 1px solid #ccc;
+      word-break: break-word;
+    }
+    .summary {
+      padding: 1rem;
+      border: 1px solid #ccc;
+      margin-bottom: 1.5rem;
+    }
+    .version {
+      text-align: center;
+      font-size: 0.9rem;
+      color: #555;
+      margin: 1rem 0;
+    }
+    .map {
+      height: 300px;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="version">Version 1.6 - User Info Page</div>
+  <h1>User & Browser Information</h1>
+  <div class="summary" id="summary"></div>
+
+  <section>
+    <h2>Navigator Info</h2>
+    <table id="navigator-info"></table>
+  </section>
+
+  <section>
+    <h2>Time & Locale</h2>
+    <table id="locale-info"></table>
+  </section>
+
+  <section>
+    <h2>IP & Network Info</h2>
+    <table id="ip-info"></table>
+    <div id="ip-map" class="map"></div>
+  </section>
+
+  <section>
+    <h2>Geolocation Info</h2>
+    <div id="geo-map" class="map"></div>
+    <p id="geo-info-text" style="margin-top: 1rem;"></p>
+  </section>
+
+  <div class="version">Version 1.6 - User Info Page</div>
+
+  <script>
+    function setTable(tableId, data) {
+      const table = document.getElementById(tableId);
+      for (const [key, value] of data) {
+        const row = table.insertRow();
+        row.insertCell().textContent = key;
+        row.insertCell().textContent = value;
+      }
+    }
+
+    function tryGet(fn, fallback = 'N/A') {
+      try {
+        return fn();
+      } catch {
+        return fallback;
+      }
+    }
+
+    const nav = navigator;
+    const summaryEl = document.getElementById('summary');
+    let ipAddress = 'Fetching...';
+    let ipData = {};
+
+    const navigatorData = [
+      ['User Agent', nav.userAgent],
+      ['Platform', nav.platform],
+      ['App Name', nav.appName],
+      ['App Version', nav.appVersion],
+      ['Product', nav.product],
+      ['Product Sub', nav.productSub],
+      ['Vendor', nav.vendor],
+      ['Language', nav.language],
+      ['Languages', (nav.languages || []).join(', ')],
+      ['Hardware Concurrency', nav.hardwareConcurrency || 'N/A'],
+      ['Max Touch Points', nav.maxTouchPoints || 'N/A'],
+      ['Cookie Enabled', nav.cookieEnabled],
+      ['Online', nav.onLine],
+      ['Java Enabled', tryGet(() => nav.javaEnabled())],
+      ['PDF Viewer', tryGet(() => nav.pdfViewerEnabled, 'Unknown')],
+      ['Do Not Track', nav.doNotTrack]
+    ];
+
+    const localeData = [
+      ['Timezone Offset (min)', new Date().getTimezoneOffset()],
+      ['Time Zone', Intl.DateTimeFormat().resolvedOptions().timeZone || 'Unknown'],
+      ['Locale', Intl.DateTimeFormat().resolvedOptions().locale || 'Unknown'],
+      ['Current Time', new Date().toString()]
+    ];
+
+    setTable('navigator-info', navigatorData);
+    setTable('locale-info', localeData);
+
+    const ua = nav.userAgent.toLowerCase();
+    let browser = 'Unknown';
+    if (ua.includes('edg')) browser = 'Microsoft Edge';
+    else if (ua.includes('chrome')) browser = 'Google Chrome';
+    else if (ua.includes('safari')) browser = 'Safari';
+    else if (ua.includes('firefox')) browser = 'Mozilla Firefox';
+    else if (ua.includes('trident') || ua.includes('msie')) browser = 'Internet Explorer';
+
+    const isMobile = /android|iphone|ipad|ipod|windows phone/.test(ua);
+    const platform = nav.platform;
+
+    let geoInfo = 'Location permission denied or unavailable.';
+    let addressInfo = 'Address unavailable.';
+
+    function renderSummary(lat = null, lon = null) {
+      summaryEl.innerHTML = `
+        <strong>Best Guess:</strong><br>
+        IP Address: ${ipAddress}<br>
+        Browser: ${browser}<br>
+        Device Type: ${isMobile ? 'Mobile' : 'Desktop'}<br>
+        Platform: ${platform}<br>
+        Time Zone: ${Intl.DateTimeFormat().resolvedOptions().timeZone || 'Unknown'}<br>
+        Language: ${nav.language}<br>
+        Country: ${ipData.country || 'Unknown'}<br>
+        ISP: ${ipData.connection?.isp || 'Unknown'}<br>
+        ASN: ${ipData.connection?.asn || 'Unknown'}<br>
+        Proxy: ${ipData.proxy?.proxy ? 'Yes' : 'No'}
+      `;
+    }
+
+    function updateSummaryWithGeo(position) {
+      const { latitude, longitude, accuracy } = position.coords;
+      geoInfo = `Latitude: ${latitude.toFixed(5)}, Longitude: ${longitude.toFixed(5)} (±${accuracy}m)`;
+
+      fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`)
+        .then(res => res.json())
+        .then(data => {
+          addressInfo = data.display_name || 'Address lookup failed.';
+          document.getElementById('geo-info-text').innerHTML =
+            `Geolocation: ${geoInfo}<br>Address: ${addressInfo}`;
+          renderSummary(latitude, longitude);
+        })
+        .catch(() => {
+          addressInfo = 'Address lookup failed.';
+          document.getElementById('geo-info-text').innerHTML =
+            `Geolocation: ${geoInfo}<br>Address: ${addressInfo}`;
+          renderSummary(latitude, longitude);
+        });
+
+      const map = L.map('geo-map').setView([latitude, longitude], 13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+      L.marker([latitude, longitude]).addTo(map).bindPopup("Your precise location").openPopup();
+    }
+
+    fetch('https://ipwho.is/')
+      .then(res => res.json())
+      .then(data => {
+        ipData = data;
+        ipAddress = data.ip || 'Unavailable';
+        renderSummary();
+
+        const rows = [
+          ['IP Address', data.ip],
+          ['Type', data.type],
+          ['Country', `${data.country} (${data.country_code})`],
+          ['Region', data.region],
+          ['City', data.city],
+          ['Latitude', data.latitude],
+          ['Longitude', data.longitude],
+          ['Postal Code', data.postal],
+          ['Timezone', data.timezone?.id],
+          ['UTC Offset', data.timezone?.utc],
+          ['ISP', data.connection?.isp],
+          ['ASN', data.connection?.asn],
+          ['Organization', data.connection?.org],
+          ['Is Proxy', data.proxy?.proxy ? 'Yes' : 'No'],
+          ['Is VPN', data.proxy?.vpn ? 'Yes' : 'No'],
+          ['Is Tor', data.proxy?.tor ? 'Yes' : 'No']
+        ];
+        setTable('ip-info', rows);
+
+        const map = L.map('ip-map').setView([data.latitude, data.longitude], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        L.marker([data.latitude, data.longitude]).addTo(map).bindPopup("IP-based location").openPopup();
+      })
+      .catch(() => {
+        ipAddress = 'Unavailable';
+        renderSummary();
+        setTable('ip-info', [['IP Address', 'Unavailable']]);
+      });
+
+    if ('geolocation' in nav) {
+      nav.geolocation.getCurrentPosition(
+        updateSummaryWithGeo,
+        () => {
+          geoInfo = 'Location permission denied or unavailable.';
+          renderSummary();
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    } else {
+      renderSummary();
+    }
+  </script>
+</body>
+</html>
